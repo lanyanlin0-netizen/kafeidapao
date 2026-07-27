@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>咖啡大炮 - 看货表</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", sans-serif; background: #f5f5f5; color: #333; }
+
+/* 顶栏 */
+.header { background: linear-gradient(135deg, #6d4c41, #8d6e63); color: #fff; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.header h1 { font-size: 22px; }
+.header .search-box { display: flex; align-items: center; gap: 6px; }
+.header input[type="text"] { padding: 8px 14px; border: none; border-radius: 20px; font-size: 14px; width: 220px; outline: none; }
+
+/* 主体 */
+.container { display: flex; max-width: 1100px; margin: 0 auto; gap: 0; }
+
+/* 左侧分类 */
+.sidebar { width: 200px; background: #fff; min-height: calc(100vh - 120px); border-right: 1px solid #e0e0e0; flex-shrink: 0; }
+.sidebar h3 { padding: 16px 16px 8px; font-size: 14px; color: #888; }
+.cat-list { list-style: none; }
+.cat-list li { padding: 10px 20px; cursor: pointer; font-size: 14px; border-left: 3px solid transparent; transition: all 0.15s; }
+.cat-list li:hover { background: #faf5f2; }
+.cat-list li.active { background: #f5ebe0; border-left-color: #6d4c41; color: #6d4c41; font-weight: bold; }
+.cat-list li .count { float: right; color: #aaa; font-size: 12px; }
+
+/* 右侧内容 */
+.content { flex: 1; padding: 16px; min-width: 0; }
+
+/* 表格 */
+table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+th { background: #6d4c41; color: #fff; padding: 10px 8px; text-align: center; font-size: 13px; white-space: nowrap; }
+td { padding: 9px 8px; text-align: center; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+tr:hover { background: #faf8f6; }
+tr.checked-row { background: #e8f5e9; }
+td.name { text-align: left; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* 勾选框 */
+td.check-cell { cursor: pointer; font-size: 18px; user-select: none; }
+td.check-cell:hover { color: #6d4c41; }
+
+/* 数量输入 */
+.qty-input { width: 56px; text-align: center; border: 1px solid #ddd; border-radius: 4px; padding: 4px; font-size: 13px; }
+.qty-input:focus { border-color: #6d4c41; outline: none; }
+
+/* 底部栏 */
+.footer { position: sticky; bottom: 0; background: #fff; border-top: 2px solid #6d4c41; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; box-shadow: 0 -2px 8px rgba(0,0,0,0.08); }
+.summary { font-size: 16px; font-weight: bold; color: #c0392b; }
+.btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; transition: opacity 0.15s; }
+.btn:hover { opacity: 0.85; }
+.btn-primary { background: #6d4c41; color: #fff; }
+.btn-success { background: #4caf50; color: #fff; }
+.btn-danger { background: #e74c3c; color: #fff; }
+.btn-warning { background: #ff9800; color: #fff; }
+.btn-info { background: #2196f3; color: #fff; }
+.btn-default { background: #e0e0e0; color: #555; }
+
+/* 模态框 */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 999; justify-content: center; align-items: center; }
+.modal-overlay.show { display: flex; }
+.modal { background: #fff; border-radius: 12px; padding: 28px; width: 420px; max-width: 90vw; max-height: 90vh; overflow-y: auto; }
+.modal h2 { margin-bottom: 18px; font-size: 18px; color: #333; }
+.modal .form-group { margin-bottom: 14px; }
+.modal label { display: block; margin-bottom: 4px; font-size: 13px; color: #666; font-weight: bold; }
+.modal input, .modal select { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+.modal input:focus, .modal select:focus { border-color: #6d4c41; outline: none; }
+.modal .modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+/* 提示 */
+.toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 24px; border-radius: 8px; font-size: 14px; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+
+/* 地址栏 */
+.addr-bar { background: #fff3e0; border-bottom: 1px solid #ffe0b2; padding: 10px 24px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; max-width: 1100px; margin: 0 auto; }
+.addr-bar label { font-size: 14px; font-weight: bold; color: #e65100; white-space: nowrap; }
+.addr-bar input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #ffb74d; border-radius: 6px; font-size: 14px; }
+.addr-bar input:focus { border-color: #e65100; outline: none; }
+.addr-bar .addr-hint { font-size: 12px; color: #aaa; }
+
+/* 空状态 */
+.empty { text-align: center; padding: 40px; color: #999; }
+
+/* 分类发货单弹窗 */
+.split-modal { background: #fff; border-radius: 12px; padding: 24px; width: 600px; max-width: 92vw; max-height: 85vh; overflow-y: auto; }
+.split-modal h2 { margin-bottom: 6px; font-size: 18px; color: #333; }
+.split-modal .split-desc { font-size: 13px; color: #888; margin-bottom: 16px; }
+.split-card { border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+.split-card .split-header { background: #f5ebe0; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.split-card .split-header h3 { font-size: 15px; color: #6d4c41; }
+.split-card .split-header .split-info { font-size: 13px; color: #c0392b; font-weight: bold; }
+.split-card .split-body { padding: 0; display: none; }
+.split-card.open .split-body { display: block; }
+.split-card .split-toggle { font-size: 12px; color: #999; transition: transform 0.2s; }
+.split-card.open .split-toggle { transform: rotate(180deg); }
+.split-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.split-table th { background: #faf5f2; padding: 8px 10px; text-align: center; color: #666; font-size: 12px; }
+.split-table td { padding: 7px 10px; text-align: center; border-bottom: 1px solid #f0f0f0; }
+.split-table td.name { text-align: left; }
+.split-table td.num { text-align: right; }
+.split-card .split-actions { padding: 10px 14px; background: #faf8f6; display: flex; gap: 8px; flex-wrap: wrap; }
+.split-card .split-actions .btn { padding: 6px 12px; font-size: 12px; }
+.split-empty { text-align: center; padding: 30px; color: #999; }
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .container { flex-direction: column; }
+  .sidebar { width: 100%; min-height: auto; border-right: none; border-bottom: 1px solid #e0e0e0; }
+  .sidebar h3 { padding: 12px 16px 4px; }
+  .cat-list { display: flex; flex-wrap: wrap; padding: 0 8px 8px; }
+  .cat-list li { border-left: none; border-bottom: 3px solid transparent; padding: 6px 14px; }
+  .cat-list li.active { border-left: none; border-bottom-color: #6d4c41; }
+  .header input[type="text"] { width: 140px; }
+  th, td { font-size: 12px; padding: 6px 4px; }
+  .footer { padding: 8px 12px; }
+  .summary { font-size: 14px; }
+  .btn { padding: 6px 10px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- 顶栏 -->
+<div class="header">
+  <h1 id="shopName">咖啡大炮</h1>
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="搜索商品名..." oninput="onSearch()">
+  </div>
+</div>
+
+<!-- 地址栏 -->
+<div class="addr-bar">
+  <label>📍 收货地址:</label>
+  <input type="text" id="addressInput" placeholder="输入收货人姓名、电话、地址（如：张三 138xxxx 北京市朝阳区xxx路xx号）" oninput="saveAddress()">
+  <span class="addr-hint">自动保存</span>
+</div>
+
+<!-- 主体 -->
+<div class="container">
+  <!-- 左侧分类 -->
+  <div class="sidebar">
+    <h3>商品分类</h3>
+    <ul class="cat-list" id="catList"></ul>
+  </div>
+  <!-- 右侧表格 -->
+  <div class="content">
+    <table id="productTable">
+      <thead>
+        <tr>
+          <th style="width:40px;">选</th>
+          <th>商品名称</th>
+          <th>规格</th>
+          <th>单位</th>
+          <th>单价(¥)</th>
+          <th style="width:80px;">数量</th>
+          <th>小计(¥)</th>
+          <th style="width:50px;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div id="emptyHint" class="empty" style="display:none;">没有匹配的商品</div>
+  </div>
+</div>
+
+<!-- 底部栏 -->
+<div class="footer">
+  <div class="summary" id="summary">已选: 0种  合计: ¥0.00</div>
+  <div class="btn-group">
+    <button class="btn btn-success" onclick="openAddModal()">➕ 新增商品</button>
+    <button class="btn btn-default" onclick="selectAll()">全选</button>
+    <button class="btn btn-default" onclick="clearAll()">清空</button>
+    <button class="btn btn-info" onclick="exportCSV()">导出CSV</button>
+    <button class="btn btn-warning" onclick="printList()">打印清单</button>
+    <button class="btn btn-primary" onclick="copySummary()">复制摘要</button>
+    <button class="btn btn-danger" onclick="copyAddress()">复制地址</button>
+    <button class="btn btn-info" onclick="openSplitModal('sell')">📋 客户版发货单</button>
+    <button class="btn btn-danger" onclick="openSplitModal('cost')">📦 发货版发货单</button>
+  </div>
+</div>
+
+<!-- 新增商品模态框 -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <h2>新增商品</h2>
+    <div class="form-group">
+      <label>分类 *</label>
+      <select id="addCat" onchange="onCatChange()"></select>
+    </div>
+    <div class="form-group" id="newCatGroup" style="display:none;">
+      <label>新分类名称</label>
+      <input type="text" id="newCatName" placeholder="输入新分类名">
+    </div>
+    <div class="form-group">
+      <label>商品名称 *</label>
+      <input type="text" id="addName" placeholder="商品名称">
+    </div>
+    <div class="form-group">
+      <label>规格</label>
+      <input type="text" id="addSpec" placeholder="如 500g/袋">
+    </div>
+    <div class="form-group">
+      <label>单位</label>
+      <input type="text" id="addUnit" placeholder="如 袋、瓶、包">
+    </div>
+    <div class="form-group">
+      <label>单价(¥) *</label>
+      <input type="number" id="addPrice" placeholder="售价 0.00" step="0.01" min="0">
+    </div>
+    <div class="form-group">
+      <label>成本价(¥)</label>
+      <input type="number" id="addCost" placeholder="成本 0.00（可选）" step="0.01" min="0">
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-default" onclick="closeAddModal()">取消</button>
+      <button class="btn btn-success" onclick="confirmAdd()">添加</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- 分类发货单弹窗 -->
+<div class="modal-overlay" id="splitModal">
+  <div class="split-modal">
+    <h2>📋 分类发货单</h2>
+    <div class="split-desc">已勾选的商品按分类自动拆分为独立发货单，可分别复制或导出。</div>
+    <div id="splitContent"></div>
+    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
+      <button class="btn btn-default" onclick="closeSplitModal()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 初始数据
+// ============================================================
+const INITIAL_DATA = {
+  "shop_name": "咖啡大炮",
+  "categories": [
+    {"name": "咖啡大炮拼配", "products": [
+      {"name": "咖啡大炮意式拼配 水洗 中深烘焙 独家配方，顶级搭配", "spec": "500g/袋", "unit": "袋", "price": 55.0, "cost": 42.0}
+    ]},
+    {"name": "风味糖浆", "products": [
+      {"name": "香草风味糖浆", "spec": "850ml/瓶", "unit": "瓶", "price": 50.0, "cost": 28.0},
+      {"name": "榛果风味糖浆", "spec": "850ml/瓶", "unit": "瓶", "price": 50.0, "cost": 28.0},
+      {"name": "海盐风味糖浆", "spec": "850ml/瓶", "unit": "瓶", "price": 50.0, "cost": 28.0},
+      {"name": "焦糖风味糖浆", "spec": "850ml/瓶", "unit": "瓶", "price": 50.0, "cost": 28.0},
+      {"name": "冰糖糖浆", "spec": "850ml/瓶", "unit": "瓶", "price": 22.0, "cost": 10.0}
+    ]},
+    {"name": "乌龙系", "products": [
+      {"name": "透天鸭屎香", "spec": "250g/包，24包/箱", "unit": "包", "price": 52.0, "cost": 40.0},
+      {"name": "白牙奇兰", "spec": "500g/包，24包/箱", "unit": "包", "price": 62.0, "cost": 52.0},
+      {"name": "荷花铁观音", "spec": "500g/包，24包/箱", "unit": "包", "price": 63.8, "cost": 50.0},
+      {"name": "熟成大红袍", "spec": "500g/包，24包/箱", "unit": "包", "price": 70.0, "cost": 64.0},
+      {"name": "桂花老白茶", "spec": "250g/包，24包/箱", "unit": "包", "price": 50.0, "cost": 39.0},
+      {"name": "云兰金观音", "spec": "500g/包，24包/箱", "unit": "包", "price": 121.0, "cost": 110.0},
+      {"name": "青玉观音", "spec": "500g/包，24包/箱", "unit": "包", "price": 55.0, "cost": 50.0},
+      {"name": "蟠桃铁观音", "spec": "500g/包，24包/箱", "unit": "包", "price": 55.0, "cost": 50.0},
+      {"name": "茉莉普洱", "spec": "500g/包，24包/箱", "unit": "包", "price": 108.0, "cost": 89.0}
+    ]},
+    {"name": "绿茶类", "products": [
+      {"name": "龙豪茉莉", "spec": "500g/包，24包/箱", "unit": "包", "price": 72.0, "cost": 65.0},
+      {"name": "与茉红玫", "spec": "500g/包，24包/箱", "unit": "包", "price": 108.0, "cost": 89.0},
+      {"name": "春山青龙井", "spec": "500g/包，24包/箱", "unit": "包", "price": 95.0, "cost": 79.0}
+    ]},
+    {"name": "茶叶类-黄茶类", "products": [
+      {"name": "翠山黄芽", "spec": "500g/包，24包/箱", "unit": "包", "price": 67.0, "cost": 52.0}
+    ]},
+    {"name": "茶叶类-黑茶类", "products": [
+      {"name": "茉莉普洱", "spec": "500g/包，24包/箱", "unit": "包", "price": 108.0, "cost": 89.0}
+    ]},
+    {"name": "红茶类", "products": [
+      {"name": "双花金牡丹", "spec": "250g/包，24包/箱", "unit": "包", "price": 66.0, "cost": 60.0},
+      {"name": "万山红芽", "spec": "500g/包，24包/箱", "unit": "包", "price": 63.0, "cost": 52.0}
+    ]},
+    {"name": "果酱类3.0", "products": [
+      {"name": "草莓果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 52.0, "cost": 44.0},
+      {"name": "老盐话梅果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 53.0, "cost": 48.0},
+      {"name": "甘草梅汁", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 54.0, "cost": 49.0},
+      {"name": "桑葚果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 52.0, "cost": 44.0},
+      {"name": "芒果果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 51.0, "cost": 46.0},
+      {"name": "油柑果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 51.0, "cost": 46.0},
+      {"name": "玫珑瓜果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 52.0, "cost": 44.0},
+      {"name": "蜜瓜果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 52.0, "cost": 44.0},
+      {"name": "蓝莓果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 58.0, "cost": 52.0},
+      {"name": "红芭乐果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 52.0, "cost": 44.0},
+      {"name": "黄皮果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 51.0, "cost": 46.0},
+      {"name": "小吊梨果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 52.0, "cost": 44.0},
+      {"name": "西瓜果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 52.0, "cost": 44.0},
+      {"name": "香水柠檬浓浆", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 36.0, "cost": 32.0},
+      {"name": "水蜜桃果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 51.0, "cost": 46.0},
+      {"name": "葡萄果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 52.0, "cost": 44.0},
+      {"name": "柳橙果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 52.0, "cost": 44.0},
+      {"name": "荔枝果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 54.0, "cost": 49.0},
+      {"name": "凤梨果酱", "spec": "1L(1.3Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 52.0, "cost": 44.0},
+      {"name": "4.0油柑果酱", "spec": "800ml(1Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 63.0, "cost": 50.0},
+      {"name": "4.0黄皮果酱", "spec": "800ml(1Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 63.0, "cost": 50.0},
+      {"name": "4.0羽衣甘蓝", "spec": "800ml(1Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 63.0, "cost": 52.0},
+      {"name": "4.0番茄果酱", "spec": "800ml(1Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 63.0, "cost": 50.0},
+      {"name": "4.0葡萄果酱", "spec": "800ml(1Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 63.0, "cost": 50.0},
+      {"name": "4.0西柚果酱", "spec": "800ml(1Kg)/瓶，12瓶/箱", "unit": "瓶", "price": 63.0, "cost": 50.0},
+      {"name": "果酱类小瓶装 所有品类", "spec": "500ml(650g)/瓶，12瓶/箱", "unit": "瓶", "price": 31.9, "cost": 29.0}
+    ]}
+  ]
+};
+
+const STORAGE_KEY = "kanhuo_data_v1";
+
+// ============================================================
+// 状态
+// ============================================================
+let shopName = "";
+let categories = [];
+let currentCat = "全部商品";
+let searchKw = "";
+// items: 扁平化商品列表，每项含 cat/name/spec/unit/price/qty/checked
+let allItems = [];
+
+// ============================================================
+// 数据加载 & 保存
+// ============================================================
+function loadData() {
+  // 优先从 localStorage 读取，否则用初始数据
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      const d = JSON.parse(saved);
+      shopName = d.shop_name || "咖啡大炮";
+      categories = d.categories || [];
+      return;
+    } catch(e) {}
+  }
+  shopName = INITIAL_DATA.shop_name;
+  categories = JSON.parse(JSON.stringify(INITIAL_DATA.categories));
+}
+
+function saveData() {
+  const data = { shop_name: shopName, categories: categories };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function resetData() {
+  localStorage.removeItem(STORAGE_KEY);
+  shopName = INITIAL_DATA.shop_name;
+  categories = JSON.parse(JSON.stringify(INITIAL_DATA.categories));
+  flattenItems();
+  rebuildCatList();
+  refreshTable();
+}
+
+// ============================================================
+// 扁平化
+// ============================================================
+function flattenItems() {
+  allItems = [];
+  categories.forEach(cat => {
+    cat.products.forEach(p => {
+      allItems.push({
+        cat: cat.name,
+        name: p.name,
+        spec: p.spec || "",
+        unit: p.unit || "",
+        price: parseFloat(p.price) || 0,
+        cost: parseFloat(p.cost) || 0,
+        qty: 0,
+        checked: false
+      });
+    });
+  });
+}
+
+// ============================================================
+// 渲染：分类列表
+// ============================================================
+function rebuildCatList() {
+  const ul = document.getElementById("catList");
+  ul.innerHTML = "";
+  // 全部商品
+  const total = allItems.length;
+  const liAll = document.createElement("li");
+  liAll.className = currentCat === "全部商品" ? "active" : "";
+  liAll.innerHTML = `全部商品 <span class="count">${total}</span>`;
+  liAll.onclick = () => { currentCat = "全部商品"; rebuildCatList(); refreshTable(); };
+  ul.appendChild(liAll);
+  // 各分类
+  categories.forEach(cat => {
+    const li = document.createElement("li");
+    li.className = currentCat === cat.name ? "active" : "";
+    li.innerHTML = `${escHtml(cat.name)} <span class="count">${cat.products.length}</span>`;
+    li.onclick = () => { currentCat = cat.name; rebuildCatList(); refreshTable(); };
+    ul.appendChild(li);
+  });
+}
+
+// ============================================================
+// 渲染：表格
+// ============================================================
+function getFiltered() {
+  const kw = searchKw.trim().toLowerCase();
+  return allItems.filter(item => {
+    if (currentCat !== "全部商品" && item.cat !== currentCat) return false;
+    if (kw && !item.name.toLowerCase().includes(kw)) return false;
+    return true;
+  });
+}
+
+function refreshTable() {
+  const tbody = document.getElementById("tableBody");
+  const empty = document.getElementById("emptyHint");
+  tbody.innerHTML = "";
+  const items = getFiltered();
+  if (items.length === 0) {
+    empty.style.display = "block";
+    document.getElementById("productTable").style.display = "none";
+  } else {
+    empty.style.display = "none";
+    document.getElementById("productTable").style.display = "";
+  }
+
+  items.forEach((item, idx) => {
+    const tr = document.createElement("tr");
+    if (item.checked) tr.className = "checked-row";
+
+    // 勾选列
+    const tdCheck = document.createElement("td");
+    tdCheck.className = "check-cell";
+    tdCheck.textContent = item.checked ? "☑" : "☐";
+    tdCheck.onclick = () => {
+      item.checked = !item.checked;
+      if (!item.checked) item.qty = 0;
+      refreshTable();
+    };
+    tr.appendChild(tdCheck);
+
+    // 名称
+    const tdName = document.createElement("td");
+    tdName.className = "name";
+    tdName.textContent = item.name;
+    tr.appendChild(tdName);
+
+    // 规格
+    const tdSpec = document.createElement("td");
+    tdSpec.textContent = item.spec;
+    tr.appendChild(tdSpec);
+
+    // 单位
+    const tdUnit = document.createElement("td");
+    tdUnit.textContent = item.unit;
+    tr.appendChild(tdUnit);
+
+    // 单价
+    const tdPrice = document.createElement("td");
+    tdPrice.className = "num";
+    tdPrice.textContent = item.price.toFixed(2);
+    tr.appendChild(tdPrice);
+
+    // 数量
+    const tdQty = document.createElement("td");
+    const input = document.createElement("input");
+    input.type = "number";
+    input.className = "qty-input";
+    input.value = item.qty > 0 ? item.qty : "";
+    input.min = "0";
+    input.oninput = () => {
+      const v = parseInt(input.value) || 0;
+      item.qty = v;
+      if (v > 0) item.checked = true;
+      updateSubtotal(tdSub, item);
+      updateSummary();
+      // 更新行样式
+      if (item.checked) tr.className = "checked-row";
+      else tr.className = "";
+    };
+    tdQty.appendChild(input);
+    tr.appendChild(tdQty);
+
+    // 小计
+    const tdSub = document.createElement("td");
+    tdSub.className = "num";
+    tdSub.textContent = item.qty > 0 ? (item.price * item.qty).toFixed(2) : "";
+    tr.appendChild(tdSub);
+
+    // 操作（删除）
+    const tdDel = document.createElement("td");
+    const delBtn = document.createElement("span");
+    delBtn.textContent = "🗑";
+    delBtn.style.cursor = "pointer";
+    delBtn.title = "删除此商品";
+    delBtn.onclick = () => deleteProduct(item);
+    tdDel.appendChild(delBtn);
+    tr.appendChild(tdDel);
+
+    tbody.appendChild(tr);
+  });
+
+  updateSummary();
+}
+
+function updateSubtotal(td, item) {
+  td.textContent = item.qty > 0 ? (item.price * item.qty).toFixed(2) : "";
+}
+
+// ============================================================
+// 统计
+// ============================================================
+function updateSummary() {
+  let count = 0, total = 0, totalQty = 0;
+  allItems.forEach(item => {
+    if (item.checked && item.qty > 0) {
+      count++;
+      total += item.price * item.qty;
+      totalQty += item.qty;
+    }
+  });
+  document.getElementById("summary").textContent =
+    `已选: ${count}种  共${totalQty}件  合计: ¥${total.toFixed(2)}`;
+}
+
+// ============================================================
+// 地址保存 & 加载
+// ============================================================
+const ADDR_KEY = "kanhuo_address";
+
+function saveAddress() {
+  const addr = document.getElementById("addressInput").value;
+  localStorage.setItem(ADDR_KEY, addr);
+}
+
+function loadAddress() {
+  const addr = localStorage.getItem(ADDR_KEY) || "";
+  document.getElementById("addressInput").value = addr;
+}
+
+function getAddress() {
+  return document.getElementById("addressInput").value.trim();
+}
+
+// ============================================================
+// 搜索
+// ============================================================
+function onSearch() {
+  searchKw = document.getElementById("searchInput").value;
+  refreshTable();
+}
+
+// ============================================================
+// 批量操作
+// ============================================================
+function selectAll() {
+  getFiltered().forEach(item => {
+    item.checked = true;
+    if (item.qty === 0) item.qty = 1;
+  });
+  refreshTable();
+  showToast("已全选当前列表");
+}
+
+function clearAll() {
+  allItems.forEach(item => { item.checked = false; item.qty = 0; });
+  refreshTable();
+  showToast("已清空");
+}
+
+// ============================================================
+// 新增商品
+// ============================================================
+function openAddModal() {
+  // 填充分类下拉
+  const sel = document.getElementById("addCat");
+  sel.innerHTML = "";
+  categories.forEach(cat => {
+    const opt = document.createElement("option");
+    opt.value = cat.name;
+    opt.textContent = cat.name;
+    sel.appendChild(opt);
+  });
+  const optNew = document.createElement("option");
+  optNew.value = "__new__";
+  optNew.textContent = "+ 新建分类...";
+  sel.appendChild(optNew);
+  document.getElementById("newCatGroup").style.display = "none";
+  document.getElementById("newCatName").value = "";
+  document.getElementById("addName").value = "";
+  document.getElementById("addSpec").value = "";
+  document.getElementById("addUnit").value = "";
+  document.getElementById("addPrice").value = "";
+  document.getElementById("addModal").classList.add("show");
+  document.getElementById("addName").focus();
+}
+
+function closeAddModal() {
+  document.getElementById("addModal").classList.remove("show");
+}
+
+function onCatChange() {
+  const v = document.getElementById("addCat").value;
+  document.getElementById("newCatGroup").style.display = v === "__new__" ? "block" : "none";
+}
+
+function confirmAdd() {
+  const name = document.getElementById("addName").value.trim();
+  if (!name) { showToast("请输入商品名称"); return; }
+  const priceRaw = document.getElementById("addPrice").value.trim();
+  if (!priceRaw) { showToast("请输入单价"); return; }
+  const price = parseFloat(priceRaw);
+  if (isNaN(price) || price < 0) { showToast("单价请输入有效数字"); return; }
+
+  let catName;
+  const catVal = document.getElementById("addCat").value;
+  if (catVal === "__new__") {
+    catName = document.getElementById("newCatName").value.trim();
+    if (!catName) { showToast("请输入新分类名称"); return; }
+  } else {
+    catName = catVal;
+  }
+
+  const spec = document.getElementById("addSpec").value.trim();
+  const unit = document.getElementById("addUnit").value.trim() || "件";
+
+  // 加入数据结构
+  let cat = categories.find(c => c.name === catName);
+  if (!cat) { cat = { name: catName, products: [] }; categories.push(cat); }
+  cat.products.push({ name, spec, unit, price, cost: parseFloat(document.getElementById("addCost")?.value || 0) });
+
+  // 加入扁平列表
+  allItems.push({ cat: catName, name, spec, unit, price, cost: parseFloat(document.getElementById("addCost")?.value || 0), qty: 0, checked: false });
+
+  // 保存
+  saveData();
+
+  // 刷新界面，切到新分类
+  currentCat = catName;
+  rebuildCatList();
+  refreshTable();
+
+  closeAddModal();
+  showToast(`已添加: ${name}`);
+}
+
+// ============================================================
+// 删除商品
+// ============================================================
+function deleteProduct(item) {
+  if (!confirm(`确定要删除商品「${item.name}」吗？\n此操作不可撤销。`)) return;
+
+  // 从 allItems 删除
+  const idx = allItems.indexOf(item);
+  if (idx >= 0) allItems.splice(idx, 1);
+
+  // 从 categories 删除
+  categories.forEach(cat => {
+    if (cat.name === item.cat) {
+      cat.products = cat.products.filter(p =>
+        !(p.name === item.name && p.spec === item.spec && p.unit === item.unit && parseFloat(p.price) === item.price)
+      );
+    }
+  });
+  // 删除空分类
+  categories = categories.filter(c => c.products.length > 0);
+
+  // 保存 & 刷新
+  saveData();
+  rebuildCatList();
+  refreshTable();
+  showToast(`已删除: ${item.name}`);
+}
+
+// ============================================================
+// 导出 CSV
+// ============================================================
+function exportCSV() {
+  const selected = allItems.filter(i => i.checked && i.qty > 0);
+  if (selected.length === 0) { showToast("请先勾选商品并输入数量"); return; }
+
+  const now = formatDateTime();
+  const addr = getAddress();
+  let csv = `\uFEFF${shopName}\n日期: ${now}\n`;
+  if (addr) csv += `收货地址: ${csvEsc(addr)}\n`;
+  csv += `\n分类,商品名称,规格,单位,单价,数量,小计\n`;
+  let total = 0;
+  selected.forEach(item => {
+    const sub = item.price * item.qty;
+    total += sub;
+    csv += `${csvEsc(item.cat)},${csvEsc(item.name)},${csvEsc(item.spec)},${csvEsc(item.unit)},${item.price.toFixed(2)},${item.qty},${sub.toFixed(2)}\n`;
+  });
+  csv += `\n,,,,,合计,${total.toFixed(2)}\n`;
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `看货清单_${now.replace(/[\/: ]/g, "")}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("CSV已导出");
+}
+
+function csvEsc(s) {
+  s = String(s);
+  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+// ============================================================
+// 打印清单
+// ============================================================
+function printList() {
+  const selected = allItems.filter(i => i.checked && i.qty > 0);
+  if (selected.length === 0) { showToast("请先勾选商品并输入数量"); return; }
+
+  const now = formatDateTime();
+  const addr = getAddress();
+  let addrHtml = addr ? `<div class="addr">📍 收货地址: ${escHtml(addr)}</div>` : "";
+  let rows = "";
+  let total = 0;
+  selected.forEach(item => {
+    const sub = item.price * item.qty;
+    total += sub;
+    rows += `<tr>
+      <td>${escHtml(item.cat)}</td>
+      <td class="name">${escHtml(item.name)}</td>
+      <td>${escHtml(item.spec)}</td>
+      <td>${escHtml(item.unit)}</td>
+      <td class="num">${item.price.toFixed(2)}</td>
+      <td class="num">${item.qty}</td>
+      <td class="num">${sub.toFixed(2)}</td>
+    </tr>`;
+  });
+
+  const html = `<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8">
+<title>${escHtml(shopName)} - 看货清单</title>
+<style>
+  body { font-family: "Microsoft YaHei", sans-serif; margin: 30px; color: #333; }
+  h1 { text-align: center; font-size: 22px; margin-bottom: 4px; }
+  .date { text-align: center; color: #666; margin-bottom: 8px; }
+  .addr { text-align: center; color: #e65100; font-size: 14px; margin-bottom: 20px; padding: 8px; background: #fff3e0; border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: center; }
+  th { background: #f0f0f0; font-weight: bold; }
+  td.name { text-align: left; }
+  td.num { text-align: right; }
+  tfoot td { font-weight: bold; font-size: 16px; background: #fffde7; }
+  .total-row td { border-top: 2px solid #333; }
+</style></head>
+<body>
+  <h1>${escHtml(shopName)}</h1>
+  <div class="date">看货清单 — ${now}</div>
+  ${addrHtml}
+  <table>
+    <thead><tr><th>分类</th><th>商品名称</th><th>规格</th><th>单位</th><th>单价¥</th><th>数量</th><th>小计¥</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr class="total-row"><td colspan="6" style="text-align:right;">合计</td><td class="num">¥${total.toFixed(2)}</td></tr></tfoot>
+  </table>
+  <script>window.onload = function(){ window.print(); }<\/script>
+</body></html>`;
+
+  const w = window.open("", "_blank");
+  w.document.write(html);
+  w.document.close();
+}
+
+// ============================================================
+// 复制摘要
+// ============================================================
+function copySummary() {
+  const selected = allItems.filter(i => i.checked && i.qty > 0);
+  if (selected.length === 0) { showToast("请先勾选商品并输入数量"); return; }
+
+  const now = formatDateTime();
+  const addr = getAddress();
+  let lines = [`【${shopName}】看货清单`, `日期: ${now}`];
+  if (addr) lines.push(`收货地址: ${addr}`);
+  lines.push("");
+  let total = 0;
+  selected.forEach(item => {
+    const sub = item.price * item.qty;
+    total += sub;
+    lines.push(`· ${item.name} ${item.spec} × ${item.qty}${item.unit} = ¥${sub.toFixed(2)}`);
+  });
+  lines.push("", `合计: ¥${total.toFixed(2)}`);
+  const text = lines.join("\n");
+
+  navigator.clipboard.writeText(text).then(() => {
+    showToast("摘要已复制，可粘贴到微信");
+  }).catch(() => {
+    // 降级方案
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    showToast("摘要已复制，可粘贴到微信");
+  });
+}
+
+// ============================================================
+// 复制地址
+// ============================================================
+function copyAddress() {
+  const addr = getAddress();
+  if (!addr) { showToast("请先输入收货地址"); return; }
+  navigator.clipboard.writeText(addr).then(() => {
+    showToast("地址已复制，可粘贴到微信");
+  }).catch(() => {
+    const ta = document.createElement("textarea");
+    ta.value = addr;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    showToast("地址已复制，可粘贴到微信");
+  });
+}
+
+// ============================================================
+// 分类发货单
+// ============================================================
+const SPLIT_CATS = ["咖啡大炮拼配", "风味糖浆"]; // 需要拆分独立发货单的分类
+let splitPriceMode = "sell"; // "sell" = 市售价, "cost" = 成本价
+
+function openSplitModal(mode) {
+  const selected = allItems.filter(i => i.checked && i.qty > 0);
+  if (selected.length === 0) {
+    showToast("请先勾选商品并输入数量");
+    return;
+  }
+  splitPriceMode = mode === "cost" ? "cost" : "sell";
+  renderSplitModal();
+  document.getElementById("splitModal").classList.add("show");
+  // 自动展开所有卡片
+  setTimeout(() => {
+    document.querySelectorAll(".split-card").forEach(c => c.classList.add("open"));
+  }, 50);
+}
+
+function closeSplitModal() {
+  document.getElementById("splitModal").classList.remove("show");
+}
+
+function renderSplitModal() {
+  const selected = allItems.filter(i => i.checked && i.qty > 0);
+  const container = document.getElementById("splitContent");
+
+  // 按分类分组
+  const groups = {};
+  selected.forEach(item => {
+    if (!groups[item.cat]) groups[item.cat] = [];
+    groups[item.cat].push(item);
+  });
+
+  // 分离：独立发货单分类 + 其他分类
+  const splitCats = SPLIT_CATS.filter(c => groups[c]);
+  const otherCats = Object.keys(groups).filter(c => !SPLIT_CATS.includes(c));
+
+  if (selected.length === 0) {
+    container.innerHTML = '<div class="split-empty">暂无已选商品</div>';
+    return;
+  }
+
+  const isCost = splitPriceMode === "cost";
+  const title = isCost ? "📦 发货版发货单（成本价）" : "📋 客户版发货单（市售价）";
+  const priceLabel = isCost ? "成本价¥" : "单价¥";
+
+  let html = `<div style="margin-bottom:12px; font-size:16px; font-weight:bold; color:${isCost ? '#e74c3c' : '#6d4c41'};">${title}</div>`;
+
+  // 独立发货单分类
+  splitCats.forEach(catName => {
+    html += buildSplitCard(catName, groups[catName], isCost, priceLabel);
+  });
+
+  // 其他分类合并为一个"其他商品"发货单
+  if (otherCats.length > 0) {
+    const otherItems = [];
+    otherCats.forEach(c => otherItems.push(...groups[c]));
+    html += buildSplitCard("其他商品", otherItems, isCost, priceLabel);
+  }
+
+  container.innerHTML = html;
+}
+
+function buildSplitCard(catName, items, isCost, priceLabel) {
+  let total = 0;
+  let totalQty = 0;
+  let rows = "";
+  items.forEach(item => {
+    const unitPrice = isCost ? item.cost : item.price;
+    const sub = unitPrice * item.qty;
+    total += sub;
+    totalQty += item.qty;
+    rows += `<tr>
+      <td class="name">${escHtml(item.name)}</td>
+      <td>${escHtml(item.spec)}</td>
+      <td>${escHtml(item.unit)}</td>
+      <td class="num">${unitPrice.toFixed(2)}</td>
+      <td class="num">${item.qty}</td>
+      <td class="num">${sub.toFixed(2)}</td>
+    </tr>`;
+  });
+
+  const cardId = "split_" + catName.replace(/[^a-zA-Z\u4e00-\u9fa5]/g, "");
+  const headerColor = isCost ? "#e74c3c" : "#6d4c41";
+
+  return `<div class="split-card" id="${cardId}">
+    <div class="split-header" onclick="toggleSplitCard('${cardId}')" style="background:${isCost ? '#fce4ec' : '#f5ebe0'};">
+      <h3 style="color:${headerColor};">${escHtml(catName)}</h3>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="split-info">${items.length}种 / ${totalQty}件 / ¥${total.toFixed(2)}</span>
+        <span class="split-toggle">▼</span>
+      </div>
+    </div>
+    <div class="split-body">
+      <table class="split-table">
+        <thead><tr><th>商品名称</th><th>规格</th><th>单位</th><th>${priceLabel}</th><th>数量</th><th>小计¥</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td colspan="5" style="text-align:right; font-weight:bold;">合计</td><td class="num" style="font-weight:bold;">¥${total.toFixed(2)}</td></tr></tfoot>
+      </table>
+      <div class="split-actions">
+        <button class="btn btn-primary" onclick="copySplit('${escAttr(catName)}')">复制此发货单</button>
+        <button class="btn btn-info" onclick="exportSplitCSV('${escAttr(catName)}')">导出CSV</button>
+        <button class="btn btn-warning" onclick="printSplit('${escAttr(catName)}')">打印</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleSplitCard(id) {
+  const card = document.getElementById(id);
+  if (card) card.classList.toggle("open");
+}
+
+function getSplitItems(catName) {
+  const selected = allItems.filter(i => i.checked && i.qty > 0);
+  if (catName === "其他商品") {
+    return selected.filter(i => !SPLIT_CATS.includes(i.cat));
+  }
+  return selected.filter(i => i.cat === catName);
+}
+
+function copySplit(catName) {
+  const items = getSplitItems(catName);
+  if (items.length === 0) { showToast("该分类无已选商品"); return; }
+
+  const isCost = splitPriceMode === "cost";
+  const tag = isCost ? "发货版(成本价)" : "客户版(市售价)";
+  const now = formatDateTime();
+  const addr = getAddress();
+  let lines = [`【${shopName}】${catName} ${tag}`, `日期: ${now}`];
+  if (addr) lines.push(`收货地址: ${addr}`);
+  lines.push("");
+  let total = 0;
+  items.forEach(item => {
+    const unitPrice = isCost ? item.cost : item.price;
+    const sub = unitPrice * item.qty;
+    total += sub;
+    lines.push(`· ${item.name} ${item.spec} × ${item.qty}${item.unit} = ¥${sub.toFixed(2)}`);
+  });
+  lines.push("", `合计: ¥${total.toFixed(2)}`);
+  const text = lines.join("\n");
+
+  navigator.clipboard.writeText(text).then(() => {
+    showToast(`${catName}${tag}已复制`);
+  }).catch(() => {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    showToast(`${catName}${tag}已复制`);
+  });
+}
+
+function exportSplitCSV(catName) {
+  const items = getSplitItems(catName);
+  if (items.length === 0) { showToast("该分类无已选商品"); return; }
+
+  const isCost = splitPriceMode === "cost";
+  const tag = isCost ? "发货版(成本价)" : "客户版(市售价)";
+  const priceCol = isCost ? "成本价" : "单价";
+  const now = formatDateTime();
+  const addr = getAddress();
+  let csv = `\uFEFF${shopName} - ${catName} ${tag}\n日期: ${now}\n`;
+  if (addr) csv += `收货地址: ${csvEsc(addr)}\n`;
+  csv += `\n商品名称,规格,单位,${priceCol},数量,小计\n`;
+  let total = 0;
+  items.forEach(item => {
+    const unitPrice = isCost ? item.cost : item.price;
+    const sub = unitPrice * item.qty;
+    total += sub;
+    csv += `${csvEsc(item.name)},${csvEsc(item.spec)},${csvEsc(item.unit)},${unitPrice.toFixed(2)},${item.qty},${sub.toFixed(2)}\n`;
+  });
+  csv += `\n,,,合计,,${total.toFixed(2)}\n`;
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${catName}_${tag}_${now.replace(/[\/: ]/g, "")}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`${catName} ${tag} CSV已导出`);
+}
+
+function printSplit(catName) {
+  const items = getSplitItems(catName);
+  if (items.length === 0) { showToast("该分类无已选商品"); return; }
+
+  const isCost = splitPriceMode === "cost";
+  const tag = isCost ? "发货版(成本价)" : "客户版(市售价)";
+  const priceLabel = isCost ? "成本价¥" : "单价¥";
+  const now = formatDateTime();
+  const addr = getAddress();
+  let addrHtml = addr ? `<div class="addr">📍 收货地址: ${escHtml(addr)}</div>` : "";
+  let rows = "";
+  let total = 0;
+  items.forEach(item => {
+    const unitPrice = isCost ? item.cost : item.price;
+    const sub = unitPrice * item.qty;
+    total += sub;
+    rows += `<tr>
+      <td class="name">${escHtml(item.name)}</td>
+      <td>${escHtml(item.spec)}</td>
+      <td>${escHtml(item.unit)}</td>
+      <td class="num">${unitPrice.toFixed(2)}</td>
+      <td class="num">${item.qty}</td>
+      <td class="num">${sub.toFixed(2)}</td>
+    </tr>`;
+  });
+
+  const subtitleColor = isCost ? "#e74c3c" : "#6d4c41";
+
+  const html = `<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8">
+<title>${escHtml(shopName)} - ${escHtml(catName)} ${tag}</title>
+<style>
+  body { font-family: "Microsoft YaHei", sans-serif; margin: 30px; color: #333; }
+  h1 { text-align: center; font-size: 22px; margin-bottom: 4px; }
+  .subtitle { text-align: center; font-size: 16px; color: ${subtitleColor}; font-weight: bold; margin-bottom: 4px; }
+  .date { text-align: center; color: #666; margin-bottom: 8px; }
+  .addr { text-align: center; color: #e65100; font-size: 14px; margin-bottom: 20px; padding: 8px; background: #fff3e0; border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: center; }
+  th { background: #f0f0f0; font-weight: bold; }
+  td.name { text-align: left; }
+  td.num { text-align: right; }
+  tfoot td { font-weight: bold; font-size: 16px; background: #fffde7; }
+  .total-row td { border-top: 2px solid #333; }
+</style></head>
+<body>
+  <h1>${escHtml(shopName)}</h1>
+  <div class="subtitle">${escHtml(catName)} ${tag}</div>
+  <div class="date">${now}</div>
+  ${addrHtml}
+  <table>
+    <thead><tr><th>商品名称</th><th>规格</th><th>单位</th><th>${priceLabel}</th><th>数量</th><th>小计¥</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr class="total-row"><td colspan="5" style="text-align:right;">合计</td><td class="num">¥${total.toFixed(2)}</td></tr></tfoot>
+  </table>
+  <script>window.onload = function(){ window.print(); }<\/script>
+</body></html>`;
+
+  const w = window.open("", "_blank");
+  w.document.write(html);
+  w.document.close();
+}
+
+function escAttr(s) {
+  return String(s).replace(/'/g, "\\'");
+}
+
+// ============================================================
+// 工具函数
+// ============================================================
+function escHtml(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function formatDateTime() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2000);
+}
+
+// ============================================================
+// 初始化
+// ============================================================
+loadData();
+flattenItems();
+loadAddress();
+document.getElementById("shopName").textContent = shopName;
+document.title = shopName + " - 看货表";
+rebuildCatList();
+refreshTable();
+
+// 回车键关闭模态框
+document.getElementById("addModal").addEventListener("click", function(e) {
+  if (e.target === this) closeAddModal();
+});
+document.getElementById("splitModal").addEventListener("click", function(e) {
+  if (e.target === this) closeSplitModal();
+});
+
+// 键盘快捷键
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape") closeAddModal();
+  if (e.key === "Enter" && document.getElementById("addModal").classList.contains("show")) {
+    if (e.target.tagName !== "TEXTAREA") confirmAdd();
+  }
+});
+</script>
+</body>
+</html>
